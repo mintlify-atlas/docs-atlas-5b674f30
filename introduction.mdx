@@ -1,0 +1,56 @@
+---
+title: "What is Distroless? Concepts and image hierarchy"
+description: "Distroless images strip OS tooling from containers, leaving only your app and its runtime. Learn the image tiers, architectures, and size trade-offs."
+---
+
+Distroless images are minimal container base images built by Google that contain only your application and its runtime dependencies. Unlike a standard Linux distribution image, distroless images omit package managers, shells, and all other OS-level utilities that your application does not need at runtime. This approach reflects a best practice employed by Google and other organizations that have run containers in production for many years: restrict what is in your runtime container to precisely what is necessary for your app.
+
+## Image hierarchy
+
+Distroless images are organized in layers, each adding only what is needed for the next class of application. All images are based on Debian 12 (bookworm) or Debian 13 (trixie) and are published with explicit Debian version suffixes.
+
+| Image | Contents | Use case |
+|---|---|---|
+| `gcr.io/distroless/static-debian12` | ca-certificates, `/etc/passwd` (root user), `/tmp`, tzdata | Fully static binaries (Go with `CGO_ENABLED=0`, Rust static builds) |
+| `gcr.io/distroless/base-nossl-debian12` | static contents + glibc | Applications that need libc but not libssl |
+| `gcr.io/distroless/base-debian12` | static contents + glibc + libssl | Most applications that link against libc or use TLS |
+| `gcr.io/distroless/cc-debian12` | base contents + C++ runtime libraries | C/C++ and Rust applications linked against libstdc++ |
+| Language images (`java17`, `nodejs22`, `python3`, …) | cc or base contents + language runtime | Applications written in Java, Node.js, Python |
+
+All images are published as multi-architecture image indexes. Architecture-specific images can be referenced directly by appending an architecture suffix to the tag, for example `gcr.io/distroless/static-debian12:latest-amd64`. Supported suffixes include `amd64`, `arm64`, `arm`, `s390x`, `ppc64le`, and (for Debian 13) `riscv64`.
+
+## Key features
+
+- **Minimal size.** The smallest image, `gcr.io/distroless/static-debian12`, is around 2 MiB — about 50% of the size of Alpine (~5 MiB) and less than 2% of the size of Debian (~124 MiB).
+- **No shell.** Distroless images do not include a shell by default. `CMD` and `ENTRYPOINT` must be specified in vector form (e.g., `CMD ["/app"]`).
+- **No package manager.** There is no `apt`, `apk`, or similar tool in the runtime image.
+- **Multi-arch support.** Images are published for `amd64`, `arm64`, `arm`, `s390x`, `ppc64le`, and (on Debian 13) `riscv64`.
+- **Cosign-signed.** All images are signed with [cosign](https://github.com/sigstore/cosign) using ephemeral keyless signing, enabling supply chain verification before use.
+- **Debug variants.** Every image has a `:debug` tag that includes a busybox shell for troubleshooting without shipping a shell in production.
+
+## Adopted in production
+
+Distroless images are used in production by a number of widely deployed projects:
+
+- **Kubernetes** — adopted as the base for system component images since v1.15
+- **Knative** — serverless platform on Kubernetes
+- **Tekton** — CI/CD pipeline framework
+- **Teleport** — infrastructure access platform
+- **BloodHound** — Active Directory and Azure AD attack path management by SpecterOps
+
+## Explore the documentation
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get a working distroless container running in minutes with a multi-stage Dockerfile.
+  </Card>
+  <Card title="Available images" icon="layer-group" href="/images/overview">
+    Browse all published distroless images for every supported language and architecture.
+  </Card>
+  <Card title="Image verification" icon="shield-check" href="/security/verification">
+    Verify cosign signatures to confirm image authenticity before building.
+  </Card>
+  <Card title="Docker multi-stage builds" icon="docker" href="/usage/docker-multistage">
+    Learn the multi-stage build pattern that makes distroless images easy to adopt.
+  </Card>
+</CardGroup>

@@ -1,0 +1,111 @@
+---
+title: "Run distroless containers as a non-root user"
+description: "The :nonroot image variants run your application as uid 65532, reducing the blast radius of container escapes and meeting security hardening requirements."
+---
+
+Running a container process as root is a security risk: if an attacker escapes the container, they have root privileges on the host. Distroless addresses this with dedicated `:nonroot` image variants that run as a dedicated, unprivileged user out of the box. Every distroless image family publishes a `:nonroot` tag that is identical to the standard image but configures the default user as uid `65532` (named `nonroot`).
+
+## nonroot image variants
+
+The `:nonroot` tag is available for every distroless image family across both Debian 12 and Debian 13. The user inside these images is named `nonroot` with uid `65532`.
+
+```
+gcr.io/distroless/static-debian12:nonroot
+gcr.io/distroless/base-debian12:nonroot
+gcr.io/distroless/cc-debian12:nonroot
+gcr.io/distroless/python3-debian12:nonroot
+gcr.io/distroless/static-debian13:nonroot
+gcr.io/distroless/base-debian13:nonroot
+gcr.io/distroless/cc-debian13:nonroot
+gcr.io/distroless/java17-debian13:nonroot
+gcr.io/distroless/java21-debian13:nonroot
+gcr.io/distroless/nodejs22-debian13:nonroot
+gcr.io/distroless/python3-debian13:nonroot
+```
+
+## Using nonroot images
+
+Switching to a `:nonroot` image requires only changing the final `FROM` line. However, because the container process runs as uid `65532` instead of root, any files copied into the image must be readable by that user.
+
+Use `--chown` on your `COPY` instruction to set the correct ownership at image build time:
+
+```dockerfile
+FROM golang:1.22 as build
+
+WORKDIR /go/src/app
+COPY . .
+
+RUN go mod download
+RUN CGO_ENABLED=0 go build -o /go/bin/app
+
+FROM gcr.io/distroless/static-debian12:nonroot
+
+COPY --from=build --chown=nonroot:nonroot /go/bin/app /app
+CMD ["/app"]
+```
+
+<Note>
+  The `nonroot` username is recognized inside the distroless image because `/etc/passwd` includes an entry for it. You can use either the name `nonroot` or the numeric uid `65532` in `--chown`.
+</Note>
+
+## Adding a custom non-root user with Bazel
+
+If you are building with Bazel and need a user with a different uid or name, `rules_distroless` provides `passwd` and `home` rules to create a custom `/etc/passwd` entry and home directory and layer them into your image.
+
+The `examples/nonroot/BUILD` file in the distroless repository demonstrates this pattern. It creates a `nonroot` user with uid `1002` and gid `1000`, then sets `user = "nonroot"` on the `oci_image` target:
+
+```python
+# Create a passwd file and home directory with a nonroot user and uid.
+passwd(
+    name = "passwd",
+    entries = [
+        {
+            "gecos": ["nonroot"],
+            "gid": 1000,
+            "home": "/home",
+            "shell": "/bin/bash",
+            "uid": 1002,
+            "username": "nonroot",
+        },
+    ],
+)
+
+home(
+    name = "home",
+    dirs = [
+        {
+            "home": "/home",
+            "uid": 1002,
+            "gid": 1000,
+        },
+    ],
+)
+
+# Include it in our image as a tar.
+oci_image(
+    name = "passwd_image",
+    base = "//base:base_root_amd64_debian12",
+    tars = [
+        ":passwd",
+        ":home",
+    ],
+    user = "nonroot",
+)
+```
+
+See [Bazel rules_oci](/usage/bazel) for more on building images with Bazel and `rules_distroless`.
+
+## Tag combination matrix
+
+Distroless publishes four tag variants for every image that combine the debug shell and nonroot user options. You can choose any combination depending on your requirements.
+
+| Tag | Shell | User |
+|---|---|---|
+| `latest` | None | root (uid 0) |
+| `nonroot` | None | nonroot (uid 65532) |
+| `debug` | busybox | root (uid 0) |
+| `debug-nonroot` | busybox | nonroot (uid 65532) |
+
+<Tip>
+  Use `debug-nonroot` during development to verify that your application starts and runs correctly as a non-root user, with a shell available for inspection. Switch to `:nonroot` for production deployments.
+</Tip>

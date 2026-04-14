@@ -1,0 +1,56 @@
+---
+title: "Python 3 distroless images for minimal containers"
+description: "Run Python applications in minimal containers with Python 3.11 on Debian 12 or Python 3.13 on Debian 13, built on the base distroless image."
+---
+
+The Python 3 distroless images provide a minimal Linux runtime with Python 3 pre-installed. They build on top of the `base` image, so you get glibc and libssl alongside Python, with no shell, no pip, and no other tooling that is only needed at build time. Install your dependencies in the build stage and copy only what your application needs into the final image.
+
+## Image contents
+
+Each Python 3 image contains everything in the [`base` image](/images/static-base-cc), plus Python 3 and its dependencies:
+
+- `gcr.io/distroless/python3-debian12` — Python 3.11
+- `gcr.io/distroless/python3-debian13` — Python 3.13
+- No shell
+
+## Architecture support
+
+| Image | Architecture suffixes |
+| ----- | --------------------- |
+| `python3-debian12` | amd64, arm64 |
+| `python3-debian13` | amd64, arm64, riscv64 |
+
+## Entrypoint
+
+The entrypoint of every Python 3 distroless image is set to `python`. Your `CMD` instruction should supply the path to the Python file to run:
+
+```dockerfile
+CMD ["hello.py", "/etc"]
+```
+
+## Example
+
+```dockerfile
+FROM python:3-slim AS build-env
+COPY . /app
+WORKDIR /app
+
+FROM gcr.io/distroless/python3
+COPY --from=build-env /app /app
+WORKDIR /app
+CMD ["hello.py", "/etc"]
+```
+
+## ldconfig and ctypes on Debian 13
+
+On Debian 13 and later, the Python 3 distroless image includes a pre-generated `ld.so.cache` to support calls to `ctypes.util.find_library()`. This allows frameworks and libraries that use `ctypes` to locate shared libraries without a shell or `ldconfig` present in the image.
+
+<Warning>
+  If you modify the image by adding new shared libraries, those libraries will not appear in the existing cache. You must call `ldconfig` to regenerate the cache, otherwise `ctypes.util.find_library()` will not find them.
+</Warning>
+
+## Support policy
+
+| Image | Debian 12 EOL | Debian 13 EOL |
+| ----- | ------------- | ------------- |
+| python3 | April 2026 | Debian 14 release day + 3 months |

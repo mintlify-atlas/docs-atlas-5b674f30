@@ -1,0 +1,82 @@
+---
+title: "Distroless image catalog and architecture support"
+description: "Browse every distroless image, available tags (latest, nonroot, debug), and supported CPU architectures across Debian 12 and Debian 13."
+---
+
+Distroless publishes images for a range of language runtimes and foundational image tiers. Each image is available as a multi-architecture index, so you can pull the same tag on any supported platform and get the correct binary. Images are explicitly tagged with a Debian version suffix (for example, `-debian12` or `-debian13`) so you can pin to a specific base distribution and avoid unexpected changes when a newer Debian version becomes the default.
+
+## Tag variants
+
+Every distroless image is published with four standard tags:
+
+| Tag | Description |
+| --- | ----------- |
+| `latest` | Default tag. The process runs as `root` (uid 0). |
+| `nonroot` | The process runs as the `nonroot` user (uid 65532). |
+| `debug` | Includes a [busybox](https://www.busybox.net/) shell for interactive debugging. Runs as root. |
+| `debug-nonroot` | Includes a busybox shell and runs as the nonroot user. |
+
+<Note>
+  If an image already has a non-default tag, prefix `debug-` to it. For example, `gcr.io/distroless/java17-debian13:nonroot` becomes `gcr.io/distroless/java17-debian13:debug-nonroot`.
+</Note>
+
+## Architecture suffixes
+
+Each tag resolves to an image index that covers all supported architectures. To pull a specific architecture directly, append a `-<arch>` suffix to the tag:
+
+```bash
+docker pull gcr.io/distroless/static-debian12:latest-amd64
+docker pull gcr.io/distroless/static-debian12:latest-arm64
+```
+
+Supported suffix values are: `amd64`, `arm64`, `arm`, `s390x`, `ppc64le`, and `riscv64` (Debian 13 only for riscv64).
+
+## Debian 12 images
+
+| Image | Tags | Architecture suffixes |
+| ----- | ---- | --------------------- |
+| `gcr.io/distroless/static-debian12` | latest, nonroot, debug, debug-nonroot | amd64, arm64, arm, s390x, ppc64le |
+| `gcr.io/distroless/base-debian12` | latest, nonroot, debug, debug-nonroot | amd64, arm64, arm, s390x, ppc64le |
+| `gcr.io/distroless/base-nossl-debian12` | latest, nonroot, debug, debug-nonroot | amd64, arm64, arm, s390x, ppc64le |
+| `gcr.io/distroless/cc-debian12` | latest, nonroot, debug, debug-nonroot | amd64, arm64, arm, s390x, ppc64le |
+| `gcr.io/distroless/python3-debian12` | latest, nonroot, debug, debug-nonroot | amd64, arm64 |
+
+## Debian 13 images
+
+Debian 13 distroless images use the Debian [UsrMerge](https://wiki.debian.org/UsrMerge) scheme, which merges `/bin`, `/sbin`, `/lib`, and `/lib64` into their counterparts under `/usr`. If you use `rules_distroless` to add packages to a Debian 13 image, set `mergedusr = True` in [`apt.install`](https://registry.bazel.build/docs/rules_distroless#apt_install).
+
+| Image | Tags | Architecture suffixes |
+| ----- | ---- | --------------------- |
+| `gcr.io/distroless/static-debian13` | latest, nonroot, debug, debug-nonroot | amd64, arm64, arm, s390x, ppc64le, riscv64 |
+| `gcr.io/distroless/base-debian13` | latest, nonroot, debug, debug-nonroot | amd64, arm64, arm, s390x, ppc64le, riscv64 |
+| `gcr.io/distroless/base-nossl-debian13` | latest, nonroot, debug, debug-nonroot | amd64, arm64, arm, s390x, ppc64le, riscv64 |
+| `gcr.io/distroless/cc-debian13` | latest, nonroot, debug, debug-nonroot | amd64, arm64, arm, s390x, ppc64le, riscv64 |
+| `gcr.io/distroless/java-base-debian13` | latest, nonroot, debug, debug-nonroot | amd64, arm64, s390x, ppc64le, riscv64 |
+| `gcr.io/distroless/java17-debian13` | latest, nonroot, debug, debug-nonroot | amd64, arm64, s390x, ppc64le, riscv64 |
+| `gcr.io/distroless/java21-debian13` | latest, nonroot, debug, debug-nonroot | amd64, arm64, s390x, ppc64le, riscv64 |
+| `gcr.io/distroless/java25-debian13` | latest, nonroot, debug, debug-nonroot | amd64, arm64, s390x, ppc64le, riscv64 |
+| `gcr.io/distroless/nodejs20-debian13` | latest, nonroot, debug, debug-nonroot | amd64, arm64, arm, s390x, ppc64le |
+| `gcr.io/distroless/nodejs22-debian13` | latest, nonroot, debug, debug-nonroot | amd64, arm64, arm, s390x, ppc64le |
+| `gcr.io/distroless/nodejs24-debian13` | latest, nonroot, debug, debug-nonroot | amd64, arm64, s390x, ppc64le |
+| `gcr.io/distroless/python3-debian13` | latest, nonroot, debug, debug-nonroot | amd64, arm64, riscv64 |
+
+## Note on gcr.io domain
+
+Distroless's serving infrastructure has moved to Artifact Registry, but the `gcr.io` domain remains valid. You do not need to update existing references — you will get the benefits of the newer infrastructure without any changes to your builds.
+
+## Image pages
+
+<CardGroup cols={2}>
+  <Card title="Static, Base, and CC" icon="cube" href="/images/static-base-cc">
+    Foundational images for Go, Rust, D, and C/C++ applications
+  </Card>
+  <Card title="Java" icon="java" href="/images/java">
+    OpenJDK 17, 21, and 25 via Temurin on Debian 13
+  </Card>
+  <Card title="Node.js" icon="node-js" href="/images/nodejs">
+    Node.js 20, 22, and 24 LTS releases on Debian 13
+  </Card>
+  <Card title="Python 3" icon="python" href="/images/python3">
+    Python 3.11 on Debian 12 and Python 3.13 on Debian 13
+  </Card>
+</CardGroup>

@@ -1,0 +1,80 @@
+---
+title: "Why use distroless images for containers"
+description: "Distroless images reduce your attack surface, cut CVE scanner noise, shrink image sizes by up to 98%, and include cosign supply chain verification."
+---
+
+Every package and binary in a container image is a potential vulnerability. Standard Linux distribution images — even minimal ones like Alpine or Debian slim — include shells, package managers, and system utilities that your application never calls at runtime. These components appear in CVE scanner results, must be patched, and increase the blast radius if an attacker achieves code execution. Distroless images solve this by including only your application and the runtime libraries it actually needs.
+
+## Security benefits
+
+### Reduced attack surface
+
+Distroless images do not contain a shell (`/bin/sh`, `/bin/bash`), a package manager (`apt`, `apk`), or general-purpose utilities (`curl`, `wget`, `nc`). This has two direct consequences:
+
+- **No shell injection.** Exploits that rely on executing shell commands after achieving code execution have no shell to invoke.
+- **No lateral movement tools.** Common post-exploitation utilities are absent from the image filesystem.
+
+The `gcr.io/distroless/static-debian12` image, for example, contains only ca-certificates, a root user `/etc/passwd` entry, a `/tmp` directory, and tzdata. Nothing else is present in the image that your application did not put there.
+
+<Warning>
+  Removing the shell and package manager does not make a container impenetrable. It raises the cost of certain attacks and narrows the available toolset for an attacker, but it does not replace other container security controls such as seccomp profiles, read-only root filesystems, and network policies.
+</Warning>
+
+### Fewer CVEs in scanner results
+
+CVE scanners report vulnerabilities for every package present in an image. A standard Debian image ships hundreds of packages; each one is a potential scanner finding that your team must triage. Distroless images contain only the packages needed for the runtime, which directly reduces the number of findings and improves the signal-to-noise ratio of your scanning pipeline.
+
+Distroless tracks upstream Debian releases and uses GitHub Actions to automatically generate pull requests when package updates are available, so the packages that are included stay current.
+
+### Supply chain security with cosign
+
+All distroless images are signed by [cosign](https://github.com/sigstore/cosign) using ephemeral keyless signing. You can verify any image before pulling it into your build:
+
+```bash
+cosign verify $IMAGE_NAME \
+  --certificate-oidc-issuer https://accounts.google.com \
+  --certificate-identity keyless@distroless.iam.gserviceaccount.com
+```
+
+This lets you confirm that the image you are using was produced by the official distroless build pipeline and has not been tampered with. See [image verification](/security/verification) for the full workflow.
+
+## Size comparison
+
+Smaller images reduce pull times, lower registry storage costs, and decrease the time-to-first-container in autoscaling scenarios. The table below compares the uncompressed size of common base images:
+
+| Image | Approximate size |
+|---|---|
+| `gcr.io/distroless/static-debian12` | ~2 MiB |
+| `alpine:latest` | ~5 MiB |
+| `debian:bookworm-slim` | ~74 MiB |
+| `debian:bookworm` | ~124 MiB |
+
+The smallest distroless image is about 50% the size of Alpine and less than 2% the size of a full Debian image.
+
+<Note>
+  Image sizes vary by architecture and change as upstream packages are updated. The figures above are approximate and sourced from the distroless README.
+</Note>
+
+## Who uses distroless
+
+Distroless images are used in production by several widely deployed open source projects:
+
+- **[Kubernetes](https://github.com/kubernetes/enhancements/blob/master/keps/sig-release/1729-rebase-images-to-distroless/README.md)** — adopted distroless as the base for system component images since v1.15
+- **[Knative](https://knative.dev)** — serverless platform built on Kubernetes
+- **[Tekton](https://tekton.dev)** — cloud-native CI/CD pipeline framework
+- **[Teleport](https://goteleport.com)** — infrastructure access management platform
+- **[BloodHound](https://github.com/SpecterOps/BloodHound)** by SpecterOps — Active Directory and Azure AD attack path management
+
+## When NOT to use distroless
+
+Distroless is not the right choice for every situation. Consider the trade-offs before adopting it.
+
+**When you need a shell at runtime.** Some applications use shell scripts as part of their startup or health-check logic. Distroless images have no shell by default. If you cannot refactor that logic into a compiled binary, distroless may not be appropriate for your image.
+
+**When you rely on OS-level tools during execution.** Processes that call `curl`, `openssl`, `sed`, or other system utilities at runtime will fail. Distroless is designed for applications whose only runtime dependency is their language runtime and linked libraries.
+
+<Tip>
+  If you need a shell for debugging but not in production, use the `:debug` image tag during development. The debug variant includes a busybox shell. Switch back to the non-debug tag for your production build. See [debug images](/usage/debug-images) for details.
+</Tip>
+
+**When your scanner requires an OS package database.** Some vulnerability scanners rely on a package manager database (e.g., `/var/lib/dpkg`) to identify installed packages. Distroless images do not include a package manager, which may cause some scanners to fall back to file-based detection only.

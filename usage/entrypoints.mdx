@@ -1,0 +1,109 @@
+---
+title: "Configuring entrypoints in distroless containers"
+description: "Distroless images have no shell, so ENTRYPOINT and CMD must always use vector (JSON array) form — shell form will cause the container to fail at startup."
+---
+
+Distroless images do not contain a shell. Because of this, the way you specify `ENTRYPOINT` and `CMD` in your Dockerfile matters: the container runtime must be able to execute your application directly, without prepending `/bin/sh -c`. This requires using **vector form** (a JSON array) for both instructions. If you use shell form by mistake, the runtime will try to invoke a shell that does not exist in the image, and the container will fail to start.
+
+## Shell form vs. vector form
+
+Docker supports two syntax forms for `ENTRYPOINT` and `CMD`. The difference determines whether the container runtime invokes a shell.
+
+**Vector form** passes the executable and arguments directly to the container runtime as a JSON array. No shell is involved:
+
+```dockerfile
+ENTRYPOINT ["myapp"]
+```
+
+**Shell form** is a bare string. The container runtime automatically prepends `/bin/sh -c`, which means a shell must exist in the image:
+
+```dockerfile
+ENTRYPOINT "myapp"
+```
+
+<Warning>
+  Shell form does **not** work with distroless images. There is no `/bin/sh` in the image, so the container will exit immediately with an error. Always use vector form.
+</Warning>
+
+## Correct and incorrect patterns
+
+<CodeGroup>
+
+```dockerfile Works — vector form
+# Executable only
+ENTRYPOINT ["myapp"]
+
+# Executable with fixed arguments
+ENTRYPOINT ["myapp", "--config", "/etc/myapp.conf"]
+
+# CMD as arguments to ENTRYPOINT
+ENTRYPOINT ["myapp"]
+CMD ["--port", "8080"]
+
+# CMD as the full command (when ENTRYPOINT is not set)
+CMD ["/app"]
+```
+
+```dockerfile Does NOT work — shell form
+# Shell form ENTRYPOINT — fails in distroless
+ENTRYPOINT "myapp"
+
+# Shell form CMD — also fails when no shell is present
+CMD myapp --port 8080
+```
+
+</CodeGroup>
+
+## Default entrypoints by image
+
+Each distroless image family has a different default `ENTRYPOINT`. This affects what your `CMD` instruction needs to provide.
+
+| Image | Default ENTRYPOINT | What CMD provides |
+|---|---|---|
+| `static`, `base`, `base-nossl`, `cc` | Empty vector `[]` | The full command, in vector form |
+| `java17`, `java21`, `java25` | Equivalent of `java -jar` | The jar filename |
+| `nodejs20`, `nodejs22`, `nodejs24` | `node` | The script filename |
+| `python3` | `python` | The script filename and any arguments |
+
+For the `static`, `base`, and `cc` image families, the entrypoint is an empty vector. In this case, `CMD` must be vector form and must specify the full path to your executable. The Go and Rust Dockerfile examples both follow this pattern:
+
+```dockerfile
+FROM gcr.io/distroless/static-debian12
+COPY --from=build /go/bin/app /
+CMD ["/app"]
+```
+
+For language runtime images, the entrypoint is set to the interpreter, and `CMD` provides the entrypoint script or jar:
+
+```dockerfile
+# Node.js: ENTRYPOINT is "node", CMD is the script
+FROM gcr.io/distroless/nodejs22-debian13
+COPY --from=build-env /app /app
+WORKDIR /app
+CMD ["hello.js"]
+```
+
+```dockerfile
+# Java: ENTRYPOINT is equivalent to "java -jar", CMD is the jar
+FROM gcr.io/distroless/java17-debian13
+COPY --from=build-env /app /app
+WORKDIR /app
+CMD ["main.jar"]
+```
+
+## When to use CMD vs. ENTRYPOINT
+
+Use `ENTRYPOINT` to set the fixed executable that always runs, and `CMD` to provide default arguments that can be overridden at `docker run` time. Both must be vector form in distroless images.
+
+A common pattern is to set `ENTRYPOINT` to the binary and leave `CMD` for configurable arguments:
+
+```dockerfile
+ENTRYPOINT ["myapp"]
+CMD ["--port", "8080"]
+```
+
+Running `docker run myimage --port 9090` overrides the `CMD` arguments but keeps the `ENTRYPOINT` binary. This pattern works the same way in distroless as in any other image — the only constraint is that both instructions must use vector form.
+
+<Tip>
+  Debug images include a busybox shell, so you can test your entrypoint interactively before switching to the non-debug image. See [debug images](/usage/debug-images) for details.
+</Tip>

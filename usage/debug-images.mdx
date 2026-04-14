@@ -1,0 +1,79 @@
+---
+title: "Using distroless debug images for troubleshooting"
+description: "The :debug tag variants add a busybox shell to any distroless image, letting you inspect the container filesystem and diagnose problems interactively."
+---
+
+When a distroless container behaves unexpectedly, you have no shell to drop into and no standard diagnostic tools available. The `:debug` image variants solve this: they include everything in the standard image plus a busybox shell, giving you a minimal interactive environment for inspecting files, checking environment variables, and diagnosing startup failures. Debug images are available for every distroless image type.
+
+## What debug images contain
+
+A debug image is identical to its non-debug counterpart except that it adds the busybox binary, which provides a shell and a collection of common Unix utilities (like `ls`, `cat`, `env`, and `find`). The rest of the image — the base OS files, language runtime, and CA certificates — is unchanged.
+
+Debug images are published under the `:debug` tag for every image family:
+
+| Standard image | Debug image |
+|---|---|
+| `gcr.io/distroless/static-debian12:latest` | `gcr.io/distroless/static-debian12:debug` |
+| `gcr.io/distroless/base-debian12:latest` | `gcr.io/distroless/base-debian12:debug` |
+| `gcr.io/distroless/cc-debian12:latest` | `gcr.io/distroless/cc-debian12:debug` |
+| `gcr.io/distroless/python3-debian12:latest` | `gcr.io/distroless/python3-debian12:debug` |
+| `gcr.io/distroless/java17-debian13:latest` | `gcr.io/distroless/java17-debian13:debug` |
+| `gcr.io/distroless/nodejs22-debian13:latest` | `gcr.io/distroless/nodejs22-debian13:debug` |
+
+## Using debug images
+
+<Steps>
+  <Step title="Switch the final stage to the :debug tag">
+    Change the `FROM` line in the final stage of your Dockerfile from the standard tag to the `:debug` tag. For example, the Python 3 example becomes:
+
+    ```dockerfile
+    FROM gcr.io/distroless/python3-debian12:debug
+    COPY . /app
+    WORKDIR /app
+    CMD ["hello.py", "/etc"]
+    ```
+  </Step>
+  <Step title="Build the debug image">
+    Build the image the same way you normally would:
+
+    ```bash
+    docker build -t my_debug_image .
+    ```
+  </Step>
+  <Step title="Launch with a shell entrypoint">
+    Override the default entrypoint with `sh` to drop into an interactive busybox shell:
+
+    ```bash
+    docker run --entrypoint=sh -ti my_debug_image
+    ```
+
+    From inside the container you can inspect the filesystem, check file permissions, and verify your application files are in the expected locations:
+
+    ```bash
+    /app # ls
+    BUILD       Dockerfile  hello.py
+    ```
+  </Step>
+</Steps>
+
+## Debug tag naming for tagged images
+
+If you are already using a specific tag on a non-debug image, the debug equivalent uses the `debug-<existing-tag>` naming convention.
+
+| Tagged image | Debug equivalent |
+|---|---|
+| `gcr.io/distroless/java17-debian13:nonroot` | `gcr.io/distroless/java17-debian13:debug-nonroot` |
+| `gcr.io/distroless/static-debian12:nonroot` | `gcr.io/distroless/static-debian12:debug-nonroot` |
+| `gcr.io/distroless/nodejs22-debian13:nonroot` | `gcr.io/distroless/nodejs22-debian13:debug-nonroot` |
+
+<Note>
+  `ldd` is not installed in the base image because it is implemented as a shell script. If you need to inspect dynamic library dependencies, you can copy `ldd` into the container or download it separately while in the debug shell.
+</Note>
+
+<Warning>
+  Never use `:debug` images in production. The busybox shell increases the attack surface of the image and undermines the security benefits that distroless provides. Use debug images only during development and troubleshooting, then switch back to the standard tag.
+</Warning>
+
+<Tip>
+  The `debug-nonroot` tag combines both benefits: a busybox shell for troubleshooting and a non-root user for security. This is useful when you want to verify that your application runs correctly as a non-root user before switching to the final `:nonroot` image.
+</Tip>

@@ -1,0 +1,52 @@
+---
+title: "Java distroless images with OpenJDK"
+description: "Run Java applications in minimal containers with Temurin OpenJDK 17, 21, or 25 on Debian 13, or build a custom JVM with java-base."
+---
+
+The Java distroless images provide a minimal Linux runtime with Temurin OpenJDK pre-installed. They build on top of the `base` image, so you get glibc and libssl alongside the JDK, without any shell, package manager, or other OS-level tooling that is unnecessary at runtime.
+
+## Image contents
+
+Each Java image contains everything in the [`base` image](/images/static-base-cc), plus the specified OpenJDK version and its dependencies:
+
+- `gcr.io/distroless/java17-debian13` — Temurin OpenJDK 17 and its dependencies
+- `gcr.io/distroless/java21-debian13` — Temurin OpenJDK 21 and its dependencies
+- `gcr.io/distroless/java25-debian13` — Temurin OpenJDK 25 and its dependencies
+- `gcr.io/distroless/java-base-debian13` — base image with no JDK; use this to install a custom JVM
+
+All Java images are published on Debian 13 only.
+
+## Entrypoint
+
+The entrypoint of every Java distroless image is set to the equivalent of `java -jar`. Your `CMD` instruction should supply the path to the JAR file:
+
+```dockerfile
+CMD ["main.jar"]
+```
+
+## Example
+
+```dockerfile
+FROM eclipse-temurin:17-jdk AS build-env
+COPY . /app/examples
+WORKDIR /app
+RUN javac examples/*.java
+RUN jar cfe main.jar examples.HelloJava examples/*.class 
+
+FROM gcr.io/distroless/java17-debian13
+COPY --from=build-env /app /app
+WORKDIR /app
+CMD ["main.jar"]
+```
+
+## Support policy
+
+Java images only support current LTS versions distributed by Debian. When a Java LTS version is no longer current, the corresponding distroless image will no longer receive updates.
+
+| Image | Debian 13 EOL |
+| ----- | ------------- |
+| java17, java21, java25 | Debian 14 release day + 3 months |
+
+<Note>
+  Debian 12 Java images are past their end-of-life date (January 2026) and are no longer updated. Use Debian 13 images for all new deployments.
+</Note>

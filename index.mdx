@@ -1,97 +1,86 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Distroless: language-focused container base images"
+description: "Distroless images contain only your application and its runtime dependencies — no shells, no package managers, minimal attack surface."
 ---
 
-## Setting up
+Distroless images are minimal container base images built by Google that include only your application and its runtime dependencies. By stripping out shells, package managers, and all other OS-level utilities, distroless images significantly reduce your attack surface, improve CVE signal-to-noise, and shrink image sizes dramatically.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Run your first application in a distroless container in minutes
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Why Distroless?" icon="shield-halved" href="/why-distroless">
+    Understand the security and size benefits of distroless images
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Available Images" icon="layer-group" href="/images/overview">
+    Browse all distroless images for Go, Java, Python, Node.js, and more
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Docker Multi-stage Builds" icon="docker" href="/usage/docker-multistage">
+    Learn to build production containers with Docker multi-stage builds
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Choose your runtime
 
-Everything you need to create world-class documentation.
+<CardGroup cols={3}>
+  <Card title="Static / Base / CC" icon="cube" href="/images/static-base-cc">
+    For Go, Rust, and C/C++ applications
+  </Card>
+  <Card title="Java" icon="java" href="/images/java">
+    OpenJDK 17, 21, and 25 on Debian 13
+  </Card>
+  <Card title="Node.js" icon="node-js" href="/images/nodejs">
+    Node.js 20, 22, and 24 LTS releases
+  </Card>
+  <Card title="Python" icon="python" href="/images/python3">
+    Python 3 on Debian 12 and 13
+  </Card>
+  <Card title="Debug Images" icon="bug" href="/usage/debug-images">
+    Busybox shell variants for troubleshooting
+  </Card>
+  <Card title="Non-root Images" icon="user-lock" href="/usage/nonroot">
+    Run containers as a non-root user
+  </Card>
+</CardGroup>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## Get started
 
-## Need inspiration?
+<Steps>
+  <Step title="Pick the right base image">
+    Choose from `static`, `base`, `cc`, or a language-specific image based on your application's runtime needs. See [available images](/images/overview) for a full list.
+  </Step>
+  <Step title="Write a multi-stage Dockerfile">
+    Use a full build image to compile your app, then copy only the binary into a distroless image for the final stage.
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+    ```dockerfile
+    FROM golang:1.22 as build
+    WORKDIR /go/src/app
+    COPY . .
+    RUN go mod download
+    RUN CGO_ENABLED=0 go build -o /go/bin/app
+
+    FROM gcr.io/distroless/static-debian12
+    COPY --from=build /go/bin/app /
+    CMD ["/app"]
+    ```
+  </Step>
+  <Step title="Verify the image signature">
+    All distroless images are signed with cosign. Verify before use:
+
+    ```bash
+    cosign verify gcr.io/distroless/static-debian12 \
+      --certificate-oidc-issuer https://accounts.google.com \
+      --certificate-identity keyless@distroless.iam.gserviceaccount.com
+    ```
+  </Step>
+  <Step title="Build and run">
+    ```bash
+    docker build -t myapp .
+    docker run myapp
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  Distroless images do not contain a shell by default. Always use the **vector form** for `CMD` and `ENTRYPOINT` instructions in your Dockerfile (e.g., `CMD ["/app"]` not `CMD /app`).
+</Note>

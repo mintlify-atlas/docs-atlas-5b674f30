@@ -1,0 +1,46 @@
+---
+title: "Build distroless images with Bazel rules_oci"
+description: "Use Bazel with rules_oci and rules_distroless to build, customize, and extend distroless container images as part of a hermetic build system."
+---
+
+Bazel is the build system used internally to build and release the distroless images themselves. You can use Bazel in your own projects to produce container images that reference distroless bases, add Debian packages, include CA certificates, and manage non-root users — all as reproducible, hermetic build targets. Two external rule sets make this possible: `rules_oci` for building OCI container images, and `rules_distroless` for customizing distroless images with Debian package management and other utilities.
+
+## Building container images with rules_oci
+
+`bazel-contrib/rules_oci` provides Bazel rules for building OCI-compliant container images. It is the recommended way to produce container images from Bazel, and it is what the distroless project uses internally.
+
+The repository at `github.com/bazel-contrib/rules_oci` contains full documentation on setup, the `oci_image` rule, tarball layering, and how to push images to a registry. Bazel BUILD file examples for distroless-based images are provided in the source repository under the `examples/` directory for Go, Python 3, Java, and Node.js.
+
+<Note>
+  The distroless repository includes Bazel BUILD files alongside each language example. These files demonstrate the `oci_image` rule and how to layer application tarballs on top of a distroless base.
+</Note>
+
+## Customizing images with rules_distroless
+
+`GoogleContainerTools/rules_distroless` provides Bazel rules specifically for customizing distroless images. It extends what `rules_oci` provides with utilities for Debian package installation, CA certificate management, and user/group management.
+
+The repository at `github.com/GoogleContainerTools/rules_distroless` contains full documentation and examples.
+
+### Installing Debian packages with apt.install
+
+The `apt.install` rule lets you declare Debian packages to install into your image at build time, without requiring `apt-get` at runtime. This is the recommended way to add packages to a distroless image rather than switching to a non-distroless base.
+
+For Debian 13 images, which use the [UsrMerge](https://wiki.debian.org/UsrMerge) filesystem layout, set `mergedusr = True` in your `apt.install` call. Without this flag, symlinks created by the UsrMerge scheme may not resolve correctly.
+
+The `apt` module extension is documented at the Bazel Central Registry: `registry.bazel.build/docs/rules_distroless#module_extension-apt`.
+
+### Including CA certificates with cacerts
+
+The `cacerts` rule packages a set of CA certificates into a layer that can be added to your image. This is useful when your application makes outbound TLS connections and needs a trusted certificate store.
+
+Full documentation for the `cacerts` rule is available at `registry.bazel.build/docs/rules_distroless#rule-cacerts`.
+
+### Adding a non-root user
+
+`rules_distroless` provides `passwd` and `home` rules for creating a `/etc/passwd` entry and home directory for a custom user. This is used in the `examples/nonroot` BUILD file in the distroless repository to create a `nonroot` user with uid `1002` and gid `1000`, then set `user = "nonroot"` on the `oci_image` target.
+
+See [non-root containers](/usage/nonroot) for more detail on this pattern.
+
+<Tip>
+  The `examples/nonroot/BUILD` file in the distroless repository is a complete, working reference for the `passwd` and `home` rules. Read it alongside the `rules_distroless` documentation to understand how the pieces fit together.
+</Tip>

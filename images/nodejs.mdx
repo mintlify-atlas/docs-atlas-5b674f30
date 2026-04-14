@@ -1,0 +1,59 @@
+---
+title: "Node.js distroless images for LTS releases"
+description: "Run Node.js applications in minimal containers with Node.js 20, 22, or 24 LTS on Debian 13, built on the cc distroless image for amd64, arm64, and more."
+---
+
+The Node.js distroless images provide a minimal Linux runtime with Node.js pre-installed. They are built on top of the `cc` image, so they include glibc, libssl, and libgcc alongside Node.js, without any shell or package manager. Only even-numbered Node.js releases are supported, matching the Node.js LTS release schedule.
+
+## Image contents
+
+Each Node.js image contains everything in the [`cc` image](/images/static-base-cc), plus the specified Node.js version and its dependencies:
+
+- `gcr.io/distroless/nodejs20-debian13` — Node.js v20 and its dependencies
+- `gcr.io/distroless/nodejs22-debian13` — Node.js v22 and its dependencies
+- `gcr.io/distroless/nodejs24-debian13` — Node.js v24 and its dependencies
+
+All Node.js images are published on Debian 13 only.
+
+## Architecture support
+
+| Image | Architecture suffixes |
+| ----- | --------------------- |
+| `nodejs20-debian13` | amd64, arm64, arm, s390x, ppc64le |
+| `nodejs22-debian13` | amd64, arm64, arm, s390x, ppc64le |
+| `nodejs24-debian13` | amd64, arm64, s390x, ppc64le |
+
+## Entrypoint
+
+The entrypoint of every Node.js distroless image is set to `node`. Your `CMD` instruction should supply the path to the JavaScript file to run:
+
+```dockerfile
+CMD ["hello.js"]
+```
+
+## Example
+
+```dockerfile
+FROM node:22 AS build-env
+COPY . /app
+WORKDIR /app
+
+RUN npm ci --omit=dev
+
+FROM gcr.io/distroless/nodejs22-debian13
+COPY --from=build-env /app /app
+WORKDIR /app
+CMD ["hello.js"]
+```
+
+## Support policy
+
+Node.js version support covers even-numbered releases (20, 22, 24, and so on) that are current, active, or in LTS maintenance. When a release exits LTS maintenance, the corresponding distroless image will no longer receive updates.
+
+| Image | Debian 13 EOL |
+| ----- | ------------- |
+| nodejs20, nodejs22, nodejs24 | Debian 14 release day + 3 months |
+
+<Note>
+  Debian 12 Node.js images are past their end-of-life date (January 2026) and are no longer updated. Use Debian 13 images for all new deployments.
+</Note>

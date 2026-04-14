@@ -1,0 +1,83 @@
+{
+  "projectType": "infrastructure",
+  "projectName": "Distroless",
+  "projectDescription": "Minimal, language-focused Docker container base images that contain only your application and its runtime dependencies — no package managers, shells, or OS bloat.",
+  "theme": "aspen",
+  "primaryColor": "#040c0c",
+  "lightColor": null,
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "why-distroless"
+            ]
+          },
+          {
+            "group": "Images",
+            "pages": [
+              "images/overview",
+              "images/static-base-cc",
+              "images/java",
+              "images/nodejs",
+              "images/python3"
+            ]
+          },
+          {
+            "group": "Usage",
+            "pages": [
+              "usage/docker-multistage",
+              "usage/bazel",
+              "usage/entrypoints",
+              "usage/debug-images",
+              "usage/nonroot"
+            ]
+          },
+          {
+            "group": "Security",
+            "pages": [
+              "security/verification",
+              "security/cve-policy",
+              "security/support-policy"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Minimal attack surface: no shell, no package manager, no OS utilities",
+    "Very small image sizes (static image ~2 MiB vs Alpine ~5 MiB vs Debian ~124 MiB)",
+    "Multi-architecture support (amd64, arm64, arm, s390x, ppc64le, riscv64)",
+    "Images signed with cosign for supply chain security",
+    "Language-specific images for Go, Java, Python, Node.js, Rust, C/C++",
+    "Debug variants with busybox shell for troubleshooting",
+    "Automatic CVE tracking via Debian upstream releases",
+    "Works with Docker multi-stage builds and Bazel rules_oci"
+  ],
+  "publicApiSurface": [
+    "gcr.io/distroless/static-debian12",
+    "gcr.io/distroless/static-debian13",
+    "gcr.io/distroless/base-debian12",
+    "gcr.io/distroless/base-debian13",
+    "gcr.io/distroless/base-nossl-debian12",
+    "gcr.io/distroless/base-nossl-debian13",
+    "gcr.io/distroless/cc-debian12",
+    "gcr.io/distroless/cc-debian13",
+    "gcr.io/distroless/java17-debian13",
+    "gcr.io/distroless/java21-debian13",
+    "gcr.io/distroless/java25-debian13",
+    "gcr.io/distroless/java-base-debian13",
+    "gcr.io/distroless/nodejs20-debian13",
+    "gcr.io/distroless/nodejs22-debian13",
+    "gcr.io/distroless/nodejs24-debian13",
+    "gcr.io/distroless/python3-debian12",
+    "gcr.io/distroless/python3-debian13"
+  ]
+}

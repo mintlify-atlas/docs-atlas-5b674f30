@@ -1,0 +1,71 @@
+---
+title: "Distroless image support timelines and EOL dates"
+description: "Distroless follows Debian's standard support timeline. See end-of-life dates for each image type across Debian 12 and Debian 13 releases."
+---
+
+Distroless follows Debian's [standard support timeline](https://wiki.debian.org/DebianReleases#Production_Releases). When Debian ends support for a release, the corresponding distroless images reach end of life at the same time (or shortly after, for language-runtime images). This page covers the end-of-life schedule for each image type, language-specific runtime support policies, and how to avoid breaking changes when Debian defaults shift.
+
+## Support timeline
+
+The table below lists end-of-life dates for images matching the pattern:
+
+```
+gcr.io/distroless/<image>-debian<version>:(latest|nonroot|debug|debug-nonroot)
+```
+
+| Image        | Debian 12 EOL  | Debian 13 EOL                  |
+| ------------ | -------------- | ------------------------------ |
+| `static`     | Sept 2026      | Debian 14 release day + 1 year |
+| `base`       | Sept 2026      | Debian 14 release day + 1 year |
+| `base-nossl` | Sept 2026      | Debian 14 release day + 1 year |
+| `cc`         | Sept 2026      | Debian 14 release day + 1 year |
+| `java*`      | Jan 2026       | Debian 14 release day + 3 months |
+| `node*`      | Jan 2026       | Debian 14 release day + 3 months |
+| `python*`    | April 2026     | Debian 14 release day + 3 months |
+
+<Note>
+  Always pin to a specific Debian version suffix (e.g., `-debian12` or `-debian13`) to avoid unexpected breakage when the unversioned default tag is updated to a newer Debian release.
+</Note>
+
+## Language-specific runtime support
+
+### Java
+
+Java images only support current LTS versions distributed by Debian. See the [Debian Java wiki](https://wiki.debian.org/Java) for which JDK versions are available in each Debian release.
+
+### Node.js
+
+Node.js image support covers even-numbered releases (20, 22, 24, etc.) that are currently in the **current**, **active LTS**, or **maintenance** phase of the Node.js release schedule. Odd-numbered releases and releases that have reached end of life are not supported. See the [Node.js release schedule](https://nodejs.org/en/about/previous-releases#release-schedule) for details.
+
+### Python
+
+The Python image support policy has not yet been formally defined. Python images currently follow the same general Debian lifecycle as other language images. Check [SUPPORT_POLICY.md](https://github.com/GoogleContainerTools/distroless/blob/main/SUPPORT_POLICY.md) in the repository for the latest information.
+
+## Images no longer supported
+
+Any tag not listed in the [available images](/images/overview) table is considered deprecated and is no longer updated. Deprecated images do not receive security fixes or package updates.
+
+If you are using a deprecated tag, migrate to a currently supported tag as soon as possible. Staying on an unsupported image means CVEs will accumulate without being patched.
+
+<Warning>
+  Any image tag not in the supported list is deprecated and will not receive security updates. Check [available images](/images/overview) to find a supported replacement.
+</Warning>
+
+## Upgrading to a newer Debian version
+
+Distroless images are explicitly tagged with a Debian version suffix (e.g., `-debian12`, `-debian13`). When you reference an image without a version suffix, it currently resolves to `-debian12`, but this default **will change** in the future when a newer Debian version becomes the default.
+
+To avoid build breakage when the default changes, always specify the Debian version explicitly:
+
+```bash
+# Recommended — explicit version suffix
+gcr.io/distroless/static-debian12:latest
+gcr.io/distroless/static-debian13:latest
+
+# Not recommended — will follow the default, which will change
+gcr.io/distroless/static:latest
+```
+
+<Warning>
+  Debian 13 uses the [UsrMerge](https://wiki.debian.org/UsrMerge) filesystem scheme. If you use `rules_distroless` to add packages to a Debian 13 image, set `mergedusr = True` in [`apt.install`](https://registry.bazel.build/docs/rules_distroless#apt_install) to avoid path resolution issues.
+</Warning>

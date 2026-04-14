@@ -1,0 +1,105 @@
+---
+title: "Static, Base, and CC distroless images"
+description: "Foundational distroless image tiers for Go, Rust, D, and C/C++ — from fully static binaries (2 MiB) to glibc, libssl, and libgcc runtimes."
+---
+
+Distroless provides three foundational image tiers for compiled languages: `static` for fully static binaries, `base` (and `base-nossl`) for applications that need glibc, and `cc` for languages like Rust and C++ that additionally require `libgcc`. Each tier builds on the previous one, so you always get the smallest possible image that satisfies your application's runtime requirements.
+
+## static
+
+The `static` image is the smallest distroless image at around 2 MiB. It is intended for applications compiled with no dynamic linking — for example, Go programs built with `CGO_ENABLED=0`. It contains:
+
+- CA certificates
+- A `/etc/passwd` entry for the root user
+- A `/tmp` directory
+- tzdata
+
+Use `gcr.io/distroless/static-debian12` or `gcr.io/distroless/static-debian13`.
+
+## base-nossl
+
+The `base-nossl` image is for applications that require glibc but do not need SSL libraries. It contains everything in `static`, plus:
+
+- glibc
+
+Use `gcr.io/distroless/base-nossl-debian12` or `gcr.io/distroless/base-nossl-debian13`.
+
+## base
+
+The `base` image is the right starting point for most applications, including Go programs that use CGO. It contains everything in `static`, plus:
+
+- glibc
+- libssl
+
+<Tabs>
+  <Tab title="Debian 12">
+    The `base-debian12` image includes glibc and libssl.
+  </Tab>
+  <Tab title="Debian 13">
+    The `base-debian13` image includes glibc and libssl, and also adds libssl's dependencies: zlib and libzstd.
+
+    <Note>
+      The Debian 13 base image does not include [OpenSSL legacy algorithms](https://docs.openssl.org/3.5/man7/OSSL_PROVIDER-legacy/#operations-and-algorithms). If your application requires them, you need to add the `openssl-legacy-provider` package yourself.
+    </Note>
+  </Tab>
+</Tabs>
+
+Use `gcr.io/distroless/base-debian12` or `gcr.io/distroless/base-debian13`.
+
+## cc
+
+The `cc` image is intended for languages like Rust, D, and C++ that produce binaries with a dependency on `libgcc`. It contains everything in `base`, plus:
+
+- libgcc1 and its dependencies
+
+Use `gcr.io/distroless/cc-debian12` or `gcr.io/distroless/cc-debian13`.
+
+## Examples
+
+<CodeGroup>
+
+```dockerfile Go (static)
+FROM golang:1.22 as build
+
+WORKDIR /go/src/app
+COPY . .
+
+RUN go mod download
+RUN go vet -v
+RUN go test -v
+
+RUN CGO_ENABLED=0 go build -o /go/bin/app
+
+FROM gcr.io/distroless/static-debian12
+
+COPY --from=build /go/bin/app /
+CMD ["/app"]
+```
+
+```dockerfile Rust (cc)
+FROM rust:1 as build-env
+WORKDIR /app
+COPY . /app
+RUN cargo build --release
+
+FROM gcr.io/distroless/cc-debian12
+COPY --from=build-env /app/target/release/hello-world-distroless /
+CMD ["./hello-world-distroless"]
+```
+
+</CodeGroup>
+
+<Tip>
+  Go programs that use CGO should use `gcr.io/distroless/base` rather than `gcr.io/distroless/static`, since CGO produces binaries that link against glibc.
+</Tip>
+
+## Support timeline
+
+These images follow the Debian standard support timeline.
+
+| Image | Debian 12 EOL | Debian 13 EOL |
+| ----- | ------------- | ------------- |
+| static | Sept 2026 | Debian 14 release day + 1 year |
+| base | Sept 2026 | Debian 14 release day + 1 year |
+| base-nossl | Sept 2026 | Debian 14 release day + 1 year |
+| cc | Sept 2026 | Debian 14 release day + 1 year |
